@@ -3,6 +3,7 @@
 //
 
 #include "../include/planner.h"
+#include "../include/State.h"
 #include <climits>
 #include <cmath>
 #include <unordered_set>

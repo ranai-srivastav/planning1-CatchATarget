@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(planning_pset1)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 include_directories(include)
 
@@ -11,7 +11,6 @@ add_executable(run_test
         src/runtest.cpp
         src/astar.cpp
         src/State.cpp
-        src/State.h
 )
 # Have the executable depend on the header files.
 target_include_directories(run_test PRIVATE ${CMAKE_SOURCE_DIR}/include)
