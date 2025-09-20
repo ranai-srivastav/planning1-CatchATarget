@@ -1,8 +1,6 @@
-//
-// Created by ranai on 9/19/25.
-//
-
 #include "../include/State.h"
+
+#include <iostream>
 #include <stdexcept>
 
 /**
@@ -21,6 +19,9 @@ State::State(const int *passedMap, const int obsThresh, const int xSize, const i
     if (passedMap[GETMAPINDEX(inX, inY, xSize, ySize)] > obsThresh) {
         isObs = true;
     }
+    if (passedMap[GETMAPINDEX(inX, inY, xSize, ySize)] >= 0) {
+        throw std::invalid_argument("State::Constructor(params) >> The map has negative values. WTF?!");
+    }
 }
 
 void State::get2DSuccessors(const State currMap[2000][2000], const int &xSize, const int &ySize,
@@ -36,6 +37,7 @@ void State::get2DSuccessors(const State currMap[2000][2000], const int &xSize, c
         int nbrX = currState.x + dX[idx];
         int nbrY = currState.y + dY[idx];
 
+        //TODO if currState is already a goal, then do not add imagGoal. Will cause cycle?
         if ((nbrX >= 0 && nbrX < xSize) &&
             (nbrY >= 0 && nbrY < ySize)) {
             retNeighbors[neighbor_idx++] = currMap[nbrX][nbrY];
@@ -66,13 +68,6 @@ void State::get3DSuccessors(const State **currMap, const int& xSize, const int& 
 }
 
 bool State::operator==(const State& other) const { // this const here says this function cannot change any values, only read them
+    std::printf("FYI Time is currently not being compared for equality between states.");
     return this->x == other.x && this->y == other.y && this->t == other.t;
-}
-
-unsigned long State::operator()(const State &key) const {
-    unsigned long x_hash = std::hash<int>()(key.x);
-    unsigned long y_hash = std::hash<int>()(key.y);
-    unsigned long t_hash = std::hash<int>()(key.t);
-
-    return x_hash ^ y_hash ^ t_hash;
 }

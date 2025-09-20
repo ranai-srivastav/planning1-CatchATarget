@@ -5,6 +5,7 @@
 #ifndef PLANNING_PSET1_STATE_H
 #include <array>
 #include <cstdint>
+#include <cstdio>
 #include <functional>
 #define PLANNING_PSET1_STATE_H
 
@@ -31,8 +32,14 @@ public:
     uint16_t x = UINT16_MAX; //TODO Necessary?
     uint16_t y = UINT16_MAX; //TODO Necessary? Yes
     uint16_t t = UINT16_MAX;
+
+    // The least number of actions required to reach this state
     int16_t actionCost = INT16_MAX;
-    int16_t distCost = INT16_MAX;
+
+    //The least costly path of coming to this state
+    int16_t stateCost = INT16_MAX;
+
+    //An estimate of what this it costs to go from this state to the goal
     int16_t heuristic = INT16_MAX;
 
     bool isInGoalTraj = false;
@@ -57,8 +64,44 @@ public:
      * @return
      */
     bool operator==(const State &other) const;
+};
 
-    unsigned long operator()(const State &key) const;
+namespace std {
+    template<>
+    struct hash<State> {
+        size_t operator()(const State& key) const noexcept {
+            size_t x_hash = hash<int>()(key.x);
+            size_t y_hash = hash<int>()(key.y);
+            size_t t_hash = hash<int>()(key.t);
+            printf("FYI Time is currently not being hashed");
+
+            return x_hash ^ (y_hash << 1) ^ (t_hash << 4);
+        }
+    };
+}
+
+template<auto MemberPtr>
+struct StateComparator {
+    /** Returns true if s2 gets popped first and then s1. `comparator(s1, s2)`
+     * Returns True if s1.value > s2.value and s1 gets placed first, giving us descending order
+     * The top of the heap is the "last element" or in this case, the smallest number which at the bottom.
+     * @param s1 First State object to be compared
+     * @param s2 Second State object to be compared
+     * @return boolean if s1 is before s2
+     */
+    bool operator()(const State& s1, const State& s2) const noexcept {
+        return s1.*MemberPtr > s2.*MemberPtr;
+    }
+};
+
+using CompareGActionValues = StateComparator<&State::actionCost>;
+using CompareGCostValues = StateComparator<&State::stateCost>;
+using CompareHValues = StateComparator<&State::heuristic>;
+
+struct CompareFValues {
+    bool operator()(const State& s1, const State& s2) const noexcept {
+        return (s1.actionCost + s1.heuristic) > (s2.actionCost + s2.heuristic);  // Min-heap behavior
+    }
 };
 
 

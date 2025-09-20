@@ -6,6 +6,7 @@
 #include "../include/State.h"
 #include <climits>
 #include <cmath>
+#include <vector>
 #include <unordered_set>
 
 /*=================================================================
@@ -29,18 +30,14 @@
 
 #define NUMOFDIRS 8
 
-
 // how many actions it took to traverse the array
 // init to MAX_INT initially
 State states[2000][2000] = {};
 
-void initialize(const int *map, const int &xsize, const int &ysize) {
-    for (unsigned int x = 0; x < xsize; x++) {
-        for (unsigned int y = 0; y < ysize; y++) {
-            map[GETMAPINDEX(x, y, xsize, ysize)]
-        }
-    }
-}
+std::unordered_set<State> goalStates;
+std::priority_queue<State, std::vector<State>, CompareGActionValues> openList;
+std::unordered_set<State> closedList;
+
 
 /**
  *
@@ -76,8 +73,8 @@ void planner(
 
     State goalState;
     goalState.x = target_traj[target_steps - 1],
-            goalState.y = target_traj[target_steps - 1 + target_steps],
-            goalState.t = curr_time;
+    goalState.y = target_traj[target_steps - 1 + target_steps],
+    goalState.t = curr_time;
     // printf("robot: %d %d;\n", robotposeX, robotposeY);
     // printf("goal: %d %d;\n", goalposeX, goalposeY);
 
@@ -88,7 +85,7 @@ void planner(
         if (newx >= 1 && newx <= x_size && newy >= 1 && newy <= y_size) {
             /* Why is (map[GETMAPINDEX(newx,newy,x_size,y_size)] >= 0) condition needed? */
             /* X, Y are 1 indexed.  */
-            if ((map[GETMAPINDEX(newx, newy, x_size, y_size)] >= 0) && (
+            if (() && (
                     map[GETMAPINDEX(newx, newy, x_size, y_size)] < collision_thresh)) //if free
             {
             }
