@@ -177,7 +177,7 @@ int main(int argc, char *argv[])
         auto end = std::chrono::high_resolution_clock::now();
         auto duration = std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
 
-        int movetime = std::max(1, (int)std::ceil(duration));
+        int movetime = 1; //std::max(1, (int)std::ceil(duration));
 
         if (newrobotposeX == robotposeX && newrobotposeY == robotposeY)
             numofmoves -= 1;

@@ -3,11 +3,15 @@
 //
 
 #ifndef PLANNING_PSET1_STATE_H
+#define PLANNING_PSET1_STATE_H
+
 #include <array>
 #include <cstdint>
 #include <cstdio>
 #include <functional>
-#define PLANNING_PSET1_STATE_H
+#include <memory>
+#include <cmath>
+#include <unordered_set>
 
 #define GETMAPINDEX(X, Y, XSIZE, YSIZE) ((Y-1)*XSIZE + (X-1))
 
@@ -19,43 +23,113 @@
 #define	MIN(A, B)	((A) < (B) ? (A) : (B))
 #endif
 
-#define NUMOFDIRS 8
+#define NUMOFDIRS 9
+
+
+// forward declare
+class State;
+
+// --- declare functor types (only declarations) -------------------------
+struct SharedPtr_State_Hash {
+    size_t operator()(const std::shared_ptr<State> &p) const noexcept; // declared here, defined later
+};
+
+struct SharedPtr_State_Eq {
+    bool operator()(const std::shared_ptr<State> &a, const std::shared_ptr<State> &b) const noexcept;
+
+    // declared here, defined later
+};
+
+// alias that depends on the functor *types* (they are declared above)
+using SharedPtr_State_UnorderedSet = std::unordered_set<std::shared_ptr<State>, SharedPtr_State_Hash,
+    SharedPtr_State_Eq>;
 
 
 class State {
 private:
-    inline static int dX[NUMOFDIRS] = {-1, -1, -1, 0, 0, 1, 1, 1};
-    inline static int dY[NUMOFDIRS] = {-1, 0, 1, -1, 1, -1, 0, 1};
     static State imagGoal;
+    inline static int xSize = -1;
+    inline static int ySize = -1;
+    inline static int obsThresh = -1;
+    inline static int trajLength = -1;
+    inline static int *passedCostMap = nullptr;
+    inline static int dX[NUMOFDIRS] = {-1, -1, -1, 0, 0, 0, 1, 1, 1};
+    inline static int dY[NUMOFDIRS] = {-1, 0, 1, -1, 0, 1, -1, 0, 1};
 
 public:
-    uint16_t x = UINT16_MAX; //TODO Necessary?
-    uint16_t y = UINT16_MAX; //TODO Necessary? Yes
+    uint16_t x = UINT16_MAX;
+    uint16_t y = UINT16_MAX;
     uint16_t t = UINT16_MAX;
 
     // The least number of actions required to reach this state
-    int16_t actionCost = INT16_MAX;
+    int16_t g_actionCost = INT16_MAX;
 
     //The least costly path of coming to this state
-    int16_t stateCost = INT16_MAX;
+    int16_t g_stateCost = INT16_MAX;
 
     //An estimate of what this it costs to go from this state to the goal
-    int16_t heuristic = INT16_MAX;
+    double heuristic = INT16_MAX;
 
     bool isInGoalTraj = false;
     bool isObs = false;
-    State *pred = nullptr;
+    std::shared_ptr<State> pred = nullptr;
 
     State() = default;
 
-    State(const int *passedMap, int obsThresh, int xSize, int ySize,
-      int inX, int inY, int inT, int inCost);
+    static State &getImagGoal() { return imagGoal; }
+    static int getXSize() { return xSize; }
+    static int getYSize() { return ySize; }
+    static int getObsThresh() { return obsThresh; }
+    static int getTrajLength() { return trajLength; }
 
-    static void get2DSuccessors(const State currMap[2000][2000], const int &xSize, const int &ySize,
-                            const State &currState, std::array<State, 9> retNeighbors);
+    static int getPassedCostMap(const int x, const int y) {
+        // Add bounds checking:
+        int index = GETMAPINDEX(x, y, xSize, ySize);
+        int maxIndex = xSize * ySize - 1;
+        if (index < 0 || index > maxIndex) {
+            printf("ERROR: Index %d out of bounds [0, %d] for coords (%d, %d)\n", index, maxIndex, x, y);
+            printf("Map dimensions: %dx%d\n", xSize, ySize);
+            throw std::out_of_range("Map index out of bounds");
+        }
+        return passedCostMap[GETMAPINDEX(x, y, xSize, ySize)];
+    }
 
-    static void get3DSuccessors(const State **currMap, const int& xSize, const int& ySize,
-                                const int& trajLength, const State& currState, State *retNeighbors);
+    static void initStaticVars(int *passedMap, const int &obstacleThreshold, const int &x_map_size,
+                               const int &y_map_size, const int &trajectoryLength) {
+        imagGoal = State();
+        imagGoal.x = -1;
+        imagGoal.y = -1;
+        imagGoal.t = -1;
+        imagGoal.g_actionCost = -1;
+        imagGoal.g_stateCost = 0;
+        imagGoal.heuristic = 0;
+
+        passedCostMap = passedMap;
+        obsThresh = obstacleThreshold;
+        xSize = x_map_size;
+        ySize = y_map_size;
+        trajLength = trajectoryLength;
+    }
+
+    static float euclidean(const std::shared_ptr<State> &s1, const std::shared_ptr<State> &s2) {
+        return static_cast<float>(std::sqrt(std::pow((s1->x - s2->x), 2) + std::pow((s1->y - s2->y), 2)));
+    }
+
+    static float manhattan(const std::shared_ptr<State> &s1, const std::shared_ptr<State> &s2) {
+        return std::max(std::abs((s1->x - s2->x)), std::abs((s1->y - s2->y)));
+    }
+
+    State(int inX, int inY, int inT);
+
+    static std::vector<std::shared_ptr<State> > get2DSuccessors(
+        const SharedPtr_State_UnorderedSet &exploredStates,
+        const std::shared_ptr<State> &currState);
+
+    // std::array<std::shared_ptr<State>, 10>& retNeighbors);
+
+    static void get3DSuccessors(std::shared_ptr<State> globalMap[2000][2000],
+                                const std::shared_ptr<State> &currState,
+                                std::array<std::shared_ptr<State>, 10> &retNeighbors);
 
     /**
      * TODO What values make 2 states the same? This is needed so the hash function can say if x == y, h(x) == h(y)
@@ -69,40 +143,52 @@ public:
 namespace std {
     template<>
     struct hash<State> {
-        size_t operator()(const State& key) const noexcept {
+        size_t operator()(const State &key) const noexcept {
             size_t x_hash = hash<int>()(key.x);
             size_t y_hash = hash<int>()(key.y);
             size_t t_hash = hash<int>()(key.t);
-            printf("FYI Time is currently not being hashed");
+            // printf("FYI Time is currently not being hashed \n");
 
             return x_hash ^ (y_hash << 1) ^ (t_hash << 4);
         }
     };
 }
 
+// --- Define the functor implementations (need State complete) -----------
+inline size_t SharedPtr_State_Hash::operator()(const std::shared_ptr<State> &p) const noexcept {
+    if (!p) return 0;
+    return std::hash<State>()(*p); // uses std::hash<State> specialization above
+}
+
+inline bool SharedPtr_State_Eq::operator()(const std::shared_ptr<State> &a,
+                                           const std::shared_ptr<State> &b) const noexcept {
+    if (a == b) return true;
+    if (!a || !b) return false;
+    return *a == *b; // uses State::operator==
+}
+
 template<auto MemberPtr>
 struct StateComparator {
     /** Returns true if s2 gets popped first and then s1. `comparator(s1, s2)`
      * Returns True if s1.value > s2.value and s1 gets placed first, giving us descending order
-     * The top of the heap is the "last element" or in this case, the smallest number which at the bottom.
+     * The top of the heap is the "last element" or in this case, the smallest number. Creates Ascending order.
      * @param s1 First State object to be compared
      * @param s2 Second State object to be compared
      * @return boolean if s1 is before s2
      */
-    bool operator()(const State& s1, const State& s2) const noexcept {
-        return s1.*MemberPtr > s2.*MemberPtr;
+    bool operator()(const std::shared_ptr<State> &s1, const std::shared_ptr<State> &s2) const noexcept {
+        return *s1.*MemberPtr > *s2.*MemberPtr;
     }
 };
 
-using CompareGActionValues = StateComparator<&State::actionCost>;
-using CompareGCostValues = StateComparator<&State::stateCost>;
+using CompareGActionValues = StateComparator<&State::g_actionCost>;
+using CompareGCostValues = StateComparator<&State::g_stateCost>;
 using CompareHValues = StateComparator<&State::heuristic>;
 
 struct CompareFValues {
-    bool operator()(const State& s1, const State& s2) const noexcept {
-        return (s1.actionCost + s1.heuristic) > (s2.actionCost + s2.heuristic);  // Min-heap behavior
+    bool operator()(const std::shared_ptr<State> &s1, const std::shared_ptr<State> &s2) const noexcept {
+        return (s1->g_stateCost + s1->heuristic) > (s2->g_stateCost + s2->heuristic); // Min-heap behavior
     }
 };
-
 
 #endif //PLANNING_PSET1_STATE_H
