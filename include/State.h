@@ -31,11 +31,11 @@ class State;
 
 // --- declare functor types (only declarations) -------------------------
 struct SharedPtr_State_Hash {
-    size_t operator()(const std::shared_ptr<State> &p) const noexcept; // declared here, defined later
+    size_t operator()(const std::shared_ptr<State>& p) const noexcept; // declared here, defined later
 };
 
 struct SharedPtr_State_Eq {
-    bool operator()(const std::shared_ptr<State> &a, const std::shared_ptr<State> &b) const noexcept;
+    bool operator()(const std::shared_ptr<State>& a, const std::shared_ptr<State> &b) const noexcept;
 
     // declared here, defined later
 };
@@ -81,10 +81,10 @@ public:
     static int getYSize() { return ySize; }
     static int getObsThresh() { return obsThresh; }
     static int getTrajLength() { return trajLength; }
-    double getFValue() const;
+    double getFValue(int epsilon) const;
 
 
-    static int getPassedCostMap(const int x, const int y) {
+    static int getPassedCostMap(const int x, const int y) { //TODO check
         // Add bounds checking:
         int index = GETMAPINDEX(x, y, xSize, ySize);
         int maxIndex = xSize * ySize - 1;
@@ -119,20 +119,20 @@ public:
     }
 
     static float manhattan(const std::shared_ptr<State> &s1, const std::shared_ptr<State> &s2) {
-        return std::max(std::abs((s1->x - s2->x)), std::abs((s1->y - s2->y)));
+        return (std::abs((s1->x - s2->x)) + std::abs((s1->y - s2->y)));
     }
 
     State(int inX, int inY, int inT);
 
     static std::vector<std::shared_ptr<State> > get2DSuccessors(
-        const SharedPtr_State_UnorderedSet &exploredStates,
-        const std::shared_ptr<State> &currState,
+        const SharedPtr_State_UnorderedSet& exploredStates,
+        const std::shared_ptr<State>& currState,
         bool checkGoal);
 
     // std::array<std::shared_ptr<State>, 10>& retNeighbors);
 
-    static std::vector<std::shared_ptr<State>> get3DSuccessors(const SharedPtr_State_UnorderedSet &exploredStates,
-                                const std::shared_ptr<State> &currState,
+    static std::vector<std::shared_ptr<State>> get3DSuccessors(const SharedPtr_State_UnorderedSet& exploredStates,
+                                const std::shared_ptr<State>& currState,
                                 bool checkGoal);
 
     /**
@@ -174,8 +174,8 @@ inline bool SharedPtr_State_Eq::operator()(const std::shared_ptr<State> &a,
 template<auto MemberPtr>
 struct StateComparator {
     /** Returns true if s2 gets popped first and then s1. `comparator(s1, s2)`
-     * Returns True if s1.value > s2.value and s1 gets placed first, giving us descending order
-     * The top of the heap is the "last element" or in this case, the smallest number. Creates Ascending order.
+     * Returns True if s1.value > s2.value and s1 gets placed first, giving us descending order where lowerd idxs have larger values.
+     * The top of the heap is the "last element" in the underlying data structure or in this case, the smallest number. Creates Ascending order.
      * @param s1 First State object to be compared
      * @param s2 Second State object to be compared
      * @return boolean if s1 is before s2
@@ -190,8 +190,22 @@ using CompareGCostValues = StateComparator<&State::g_stateCost>;
 using CompareHValues = StateComparator<&State::heuristic>;
 
 struct CompareFValues {
-    bool operator()(const std::shared_ptr<State> &s1, const std::shared_ptr<State> &s2) const noexcept {
-        return s1->getFValue() > s2->getFValue(); // Min-heap behavior
+    bool operator()(const std::shared_ptr<State> &s1,
+                    const std::shared_ptr<State> &s2) const noexcept
+    {
+        double f1 = s1->getFValue(2);
+        double f2 = s2->getFValue(2);
+
+        constexpr double eps = 1e-9;
+        if (std::fabs(f1 - f2) > eps) {
+            // min-heap behavior: element with smaller f has higher priority,
+            return f1 > f2;
+        }
+
+        // tie-break: when f1 == f2, element with LARGER timestamp should be popped first
+        // => treat larger timestamp as higher priority. So s1 is lower priority when
+        // its timestamp is smaller than s2's.
+        return s1->heuristic < s2->heuristic;
     }
 };
 

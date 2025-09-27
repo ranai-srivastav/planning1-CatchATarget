@@ -11,6 +11,7 @@ add_executable(run_test
         src/runtest.cpp
         src/astar.cpp
         src/State.cpp
+        src/simple_backward_astar.cpp
 )
 # Have the executable depend on the header files.
 target_include_directories(run_test PRIVATE ${CMAKE_SOURCE_DIR}/include)

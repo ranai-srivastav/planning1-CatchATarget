@@ -44,8 +44,8 @@ State::State(int inX, int inY, int inT) : x(inX), y(inY), t(inT) {
     }
 }
 
-double State::getFValue() const{
-    return 2*this->heuristic + this->g_stateCost;
+double State::getFValue(const int epsilon) const{
+    return epsilon*this->heuristic + this->g_stateCost;
 }
 
 
@@ -92,9 +92,9 @@ std::vector<std::shared_ptr<State> > State::get3DSuccessors(const SharedPtr_Stat
         int nbrY = currState->y + dY[idx];
 
         //TODO if currState is already a goal, then do not add imagGoal. Will cause cycle?
-        if ((nbrX > 0 && nbrX <= xSize) && (nbrY > 0 && nbrY <= ySize) &&
+        if ((nbrX > 0 && nbrX <= xSize) && (nbrY > 0 && nbrY <= ySize) && (currState->t > 0) &&
             (getPassedCostMap(nbrX, nbrY) < obsThresh)) {
-            std::shared_ptr<State> new_nbr = std::make_shared<State>(nbrX, nbrY, currState->t + 1);
+            std::shared_ptr<State> new_nbr = std::make_shared<State>(nbrX, nbrY, currState->t - 1);
             auto iter = openedStates.find(new_nbr);
             if (iter != openedStates.end()) {
                 // using existing pointer
