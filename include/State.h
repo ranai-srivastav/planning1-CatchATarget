@@ -81,6 +81,8 @@ public:
     static int getYSize() { return ySize; }
     static int getObsThresh() { return obsThresh; }
     static int getTrajLength() { return trajLength; }
+    double getFValue() const;
+
 
     static int getPassedCostMap(const int x, const int y) {
         // Add bounds checking:
@@ -109,6 +111,7 @@ public:
         xSize = x_map_size;
         ySize = y_map_size;
         trajLength = trajectoryLength;
+
     }
 
     static float euclidean(const std::shared_ptr<State> &s1, const std::shared_ptr<State> &s2) {
@@ -123,13 +126,14 @@ public:
 
     static std::vector<std::shared_ptr<State> > get2DSuccessors(
         const SharedPtr_State_UnorderedSet &exploredStates,
-        const std::shared_ptr<State> &currState);
+        const std::shared_ptr<State> &currState,
+        bool checkGoal);
 
     // std::array<std::shared_ptr<State>, 10>& retNeighbors);
 
-    static void get3DSuccessors(std::shared_ptr<State> globalMap[2000][2000],
+    static std::vector<std::shared_ptr<State>> get3DSuccessors(const SharedPtr_State_UnorderedSet &exploredStates,
                                 const std::shared_ptr<State> &currState,
-                                std::array<std::shared_ptr<State>, 10> &retNeighbors);
+                                bool checkGoal);
 
     /**
      * TODO What values make 2 states the same? This is needed so the hash function can say if x == y, h(x) == h(y)
@@ -187,7 +191,7 @@ using CompareHValues = StateComparator<&State::heuristic>;
 
 struct CompareFValues {
     bool operator()(const std::shared_ptr<State> &s1, const std::shared_ptr<State> &s2) const noexcept {
-        return (s1->g_stateCost + s1->heuristic) > (s2->g_stateCost + s2->heuristic); // Min-heap behavior
+        return s1->getFValue() > s2->getFValue(); // Min-heap behavior
     }
 };
 
